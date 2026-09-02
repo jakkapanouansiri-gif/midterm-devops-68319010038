@@ -1,0 +1,47 @@
+services:
+
+  db:
+    image: postgres:16-alpine # 💡 เปลี่ยนเป็น v16 เพื่อรองรับ path /data เดิมอย่างเสถียร
+    container_name: compuroom-db
+    restart: always
+    environment:
+      POSTGRES_DB: compuroom
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d compuroom"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build: ./backend
+    container_name: compuroom-api
+    restart: always
+    environment:
+      PORT: 3000
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_NAME: compuroom
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "3000:3000"
+
+  frontend:
+    build: ./frontend
+    container_name: compuroom-web
+    restart: always
+    depends_on:
+      - backend
+    ports:
+      - "8080:80"
+
+volumes:
+  postgres_data:
